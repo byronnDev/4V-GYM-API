@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Repository\ActivityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -38,15 +39,9 @@ class Activity
      */
     private $date_end;
 
-    /**
-     * @ORM\ManyToMany(targetEntity=ActivitiesMonitors::class, mappedBy="activity")
-     */
-    private $activitiesMonitors;
-
     public function __construct()
     {
         $this->monitors = new ArrayCollection();
-        $this->activitiesMonitors = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -112,13 +107,5 @@ class Activity
         $this->date_end = $date_end;
 
         return $this;
-    }
-
-    /**
-     * @return Collection<int, ActivitiesMonitors>
-     */
-    public function getActivitiesMonitors(): Collection
-    {
-        return $this->activitiesMonitors;
     }
 }
