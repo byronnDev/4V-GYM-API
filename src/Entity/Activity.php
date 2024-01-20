@@ -39,9 +39,15 @@ class Activity
      */
     private $date_end;
 
+    /**
+     * @ORM\ManyToMany(targetEntity=ActivitiesMonitors::class, mappedBy="activity")
+     */
+    private $activitiesMonitors;
+
     public function __construct()
     {
         $this->monitors = new ArrayCollection();
+        $this->activitiesMonitors = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -105,6 +111,33 @@ class Activity
     public function setDateEnd(\DateTimeInterface $date_end): self
     {
         $this->date_end = $date_end;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ActivitiesMonitors>
+     */
+    public function getActivitiesMonitors(): Collection
+    {
+        return $this->activitiesMonitors;
+    }
+
+    public function addActivitiesMonitor(ActivitiesMonitors $activitiesMonitor): self
+    {
+        if (!$this->activitiesMonitors->contains($activitiesMonitor)) {
+            $this->activitiesMonitors[] = $activitiesMonitor;
+            $activitiesMonitor->addActivity($this);
+        }
+
+        return $this;
+    }
+
+    public function removeActivitiesMonitor(ActivitiesMonitors $activitiesMonitor): self
+    {
+        if ($this->activitiesMonitors->removeElement($activitiesMonitor)) {
+            $activitiesMonitor->removeActivity($this);
+        }
 
         return $this;
     }
