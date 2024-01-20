@@ -10,15 +10,10 @@ use App\Entity\Activity;
 class ActivityController extends AbstractController
 {
     /**
-     * @Route("/activity", name="activity_create", methods={"POST"})
+     * @Route("/activities", name="get_activities", methods={"GET"})
      */
-    public function create(): JsonResponse
+    public function getAll(): JsonResponse
     {
-        // Create activity
-        $activity = new Activity();
-        // $activity->setActivityType();
-        // $activity->
-
 
         return new JsonResponse(['status' => 'ok']);
     }
