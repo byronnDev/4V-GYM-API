@@ -2,7 +2,6 @@
 
 namespace App\Entity;
 
-use App\Repository\ActivityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -121,24 +120,5 @@ class Activity
     public function getActivitiesMonitors(): Collection
     {
         return $this->activitiesMonitors;
-    }
-
-    public function addActivitiesMonitor(ActivitiesMonitors $activitiesMonitor): self
-    {
-        if (!$this->activitiesMonitors->contains($activitiesMonitor)) {
-            $this->activitiesMonitors[] = $activitiesMonitor;
-            $activitiesMonitor->addActivity($this);
-        }
-
-        return $this;
-    }
-
-    public function removeActivitiesMonitor(ActivitiesMonitors $activitiesMonitor): self
-    {
-        if ($this->activitiesMonitors->removeElement($activitiesMonitor)) {
-            $activitiesMonitor->removeActivity($this);
-        }
-
-        return $this;
     }
 }
