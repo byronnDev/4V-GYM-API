@@ -166,4 +166,26 @@ class MonitorController extends AbstractController
 
         return new JsonResponse($monitorAsArray, JsonResponse::HTTP_OK);
     }
+
+    /**
+     * @Route("/monitors/{monitorId}", name="delete_monitor", methods={"DELETE"})
+     */
+    public function delete(int $monitorId, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $monitor = $entityManager->getRepository(Monitor::class)->findBy(['id' => $monitorId]); // Returns an array of objects
+
+        // Return a JSON response with data and 404 status code if the monitor does not exist
+        if (!$monitor) {
+            return new JsonResponse(['code' => 20, 'description' => 'Monitor not found'], JsonResponse::HTTP_CONFLICT);
+        }
+
+        // Remove the monitor from the database
+        $entityManager->remove($monitor[0]);
+
+        // Save the new monitor into the database
+        $entityManager->flush();
+
+        // Return a JSON response with no data and 200 status code
+        return new JsonResponse(null, JsonResponse::HTTP_OK);
+    }
 }
