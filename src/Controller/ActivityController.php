@@ -329,6 +329,36 @@ class ActivityController extends AbstractController
         return new JsonResponse($activityAsArray, JsonResponse::HTTP_OK);
     }
 
+    /**
+     * @Route("/activities/{activityId}", name="delete_activities", methods={"DELETE"})
+     */
+    public function delete(int $activityId, EntityManagerInterface $entityManager, LoggerInterface $logger, ValidatorInterface $validator): JsonResponse
+    {
+        $logger->debug('Request: ' . $activityId); // Log the received activity ID
+        $activity = $entityManager->getRepository(Activity::class)->findBy(['id' => $activityId]); // Returns an array of objects
+
+        // Validate the entity
+        $errors = $validator->validate($activity);
+        if (count($errors) > 0) {
+            $logger->error('Validation error: ' . $errors);
+            return new JsonResponse(['code' => 19, 'description' => 'Any Error like validations'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Return a JSON response with data and 404 status code if the activity does not exist
+        if (!$activity) {
+            return new JsonResponse(['code' => 20, 'description' => 'Activity not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        // Remove the activity from the database
+        $entityManager->remove($activity[0]);
+
+        // Save the new activity into the database
+        $entityManager->flush();
+
+        // Return a JSON response with no data and 200 status code
+        return new JsonResponse(null, JsonResponse::HTTP_OK);
+    }
+
     // Validate the date format example: 2024-01-20T23:36:33.297Z
     public function isValidStartDate(\DateTime $date): bool
     {
