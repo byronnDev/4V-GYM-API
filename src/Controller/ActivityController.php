@@ -115,6 +115,7 @@ class ActivityController extends AbstractController
         // Validate the entity
         $errors = $validator->validate($json);
         if (count($errors) > 0) {
+            $logger->error('Validation error: ' . $errors);
             return new JsonResponse(['code' => 19, 'description' => 'Any Error like validations'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -122,6 +123,7 @@ class ActivityController extends AbstractController
         $requiredFields = ['activity_type_id', 'monitors_id', 'date_start', 'date_end'];
         foreach ($requiredFields as $field) {
             if (!property_exists($json, $field)) {
+                $logger->error("Missing required field: $field");
                 return new JsonResponse(['code' => 20, 'description' => "The $field is mandatory"], JsonResponse::HTTP_BAD_REQUEST);
             }
         }
@@ -131,12 +133,14 @@ class ActivityController extends AbstractController
         $dateEnd = \DateTime::createFromFormat('Y-m-d\TH:i:s', substr($json->date_end, 0, 19));
 
         if (!$dateStart || !$dateEnd || !$this->isValidStartDate($dateStart) || !$this->isValidStartDate($dateEnd)) {
+            $logger->error('Invalid date format');
             return new JsonResponse(['code' => 23, 'description' => 'The date format is not valid'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         // Check if the activity already exists
         $activityInput = $entityManager->getRepository(Activity::class)->findBy(['activity_type' => $json->activity_type_id, 'date_start' => $dateStart]);
         if ($activityInput) {
+            $logger->error('Activity already exists');
             return new JsonResponse(['code' => 22, 'description' => 'The activity already exists'], JsonResponse::HTTP_CONFLICT);
         }
 
@@ -144,6 +148,7 @@ class ActivityController extends AbstractController
         $activityType = $entityManager->getRepository(ActivityType::class)->find($json->activity_type_id);
 
         if (!$activityType) {
+            $logger->error('Activity type does not exist');
             return new JsonResponse(['code' => 23, 'description' => 'The activity type does not exist'], JsonResponse::HTTP_CONFLICT);
         }
 
@@ -152,6 +157,7 @@ class ActivityController extends AbstractController
         foreach ($json->monitors_id as $monitorId) {
             $monitor = $entityManager->getRepository(Monitor::class)->find($monitorId);
             if (!$monitor) {
+                $logger->error('Monitor does not exist: ' . $monitorId);
                 return new JsonResponse(['code' => 23, 'description' => 'The monitor with id ' . $monitorId . ' does not exist'], JsonResponse::HTTP_CONFLICT);
             }
             $activity->addMonitor($monitor);
@@ -162,6 +168,7 @@ class ActivityController extends AbstractController
         // Validate the new activity object
         $errors = $validator->validate($activity);
         if (count($errors) > 0) {
+            $logger->error('Validation error: ' . $errors);
             return new JsonResponse(['code' => JsonResponse::HTTP_BAD_REQUEST, 'description' => 'Any Error like validations'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
