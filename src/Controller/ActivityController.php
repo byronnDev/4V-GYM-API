@@ -212,6 +212,123 @@ class ActivityController extends AbstractController
         return new JsonResponse($activityAsArray, JsonResponse::HTTP_OK);
     }
 
+    /**
+     * @Route("/activities/{activityId}", name="update_activities", methods={"PUT"})
+     */
+    public function update(int $activityId, Request $request, EntityManagerInterface $entityManager, LoggerInterface $logger, ValidatorInterface $validator): JsonResponse
+    {
+        $logger->debug('Request: ' . $request->getContent());
+        $json = json_decode($request->getContent());
+
+        // Validate the entity
+        $errors = $validator->validate($json);
+
+        if (count($errors) > 0) {
+            $logger->error('Validation error: ' . $errors);
+            return new JsonResponse(['code' => 19, 'description' => 'Any Error like validations'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Validate the required fields
+        $requiredFields = ['activity_type_id', 'monitors_id', 'date_start', 'date_end'];
+        foreach ($requiredFields as $field) {
+            if (!property_exists($json, $field)) {
+                $logger->error("Missing required field: $field");
+                return new JsonResponse(['code' => 20, 'description' => "The $field is mandatory"], JsonResponse::HTTP_BAD_REQUEST);
+            }
+        }
+
+        // Validate the date format example: 2024-01-20T23:36:33.297Z
+        $dateStart = \DateTime::createFromFormat('Y-m-d\TH:i:s', substr($json->date_start, 0, 19));
+        $dateEnd = \DateTime::createFromFormat('Y-m-d\TH:i:s', substr($json->date_end, 0, 19));
+
+        if (!$dateStart || !$dateEnd || !$this->isValidStartDate($dateStart) || !$this->isValidStartDate($dateEnd)) {
+            $logger->error('Invalid date format');
+            return new JsonResponse(['code' => 23, 'description' => 'The date format is not valid'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Check if the activity already exists
+        $activityExist = $entityManager->getRepository(Activity::class)->findBy(['id' => $activityId]);
+        if (!$activityExist) {
+            $logger->error('Activity does not exist');
+            return new JsonResponse(['code' => 22, 'description' => 'The activity does not exist'], JsonResponse::HTTP_CONFLICT);
+        }
+
+        // Create activity objects
+        $activityType = $entityManager->getRepository(ActivityType::class)->find($json->activity_type_id);
+        if (!$activityType) {
+            $logger->error('Activity type does not exist');
+            return new JsonResponse(['code' => 23, 'description' => 'The activity type does not exist'], JsonResponse::HTTP_CONFLICT);
+        }
+        // Update activity
+        $activity = $entityManager->getRepository(Activity::class)->find($activityId);
+        if (!$activity) {
+            $logger->error('Activity does not exist');
+            return new JsonResponse(['code' => 23, 'description' => 'The activity does not exist'], JsonResponse::HTTP_CONFLICT);
+        }
+        $activity->setActivityType($activityType);
+        // Delete all monitors
+        foreach ($activity->getMonitors() as $monitor) {
+            $activity->removeMonitor($monitor);
+        }
+        // Add new monitors
+        foreach ($json->monitors_id as $monitorId) {
+            // Add the monitor
+            $monitor = $entityManager->getRepository(Monitor::class)->find($monitorId);
+            if (!$monitor) {
+                $logger->error('Monitor does not exist: ' . $monitorId);
+                return new JsonResponse(['code' => 23, 'description' => 'The monitor with id ' . $monitorId . ' does not exist'], JsonResponse::HTTP_CONFLICT);
+            }
+            $activity->addMonitor($monitor);
+        }
+        $activity->setDateStart($dateStart);
+        $activity->setDateEnd($dateEnd);
+
+        // Validate the new activity object
+        $errors = $validator->validate($activity);
+        if (count($errors) > 0) {
+            $logger->error('Validation error: ' . $errors);
+            return new JsonResponse(['code' => JsonResponse::HTTP_BAD_REQUEST, 'description' => 'Any Error like validations'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Save the new activity into the database
+        $entityManager->flush();
+
+        // Convert the object into an associative array
+        $activityType = [
+            'id' => $activityType->getId(),
+            'name' => $activityType->getName(),
+            'number_monitors' => $activityType->getNumberMonitors()
+        ];
+
+        // Convert the object into an associative array
+        $monitors = [];
+        foreach ($activity->getMonitors() as $monitor) {
+            $monitors[] = [
+                'id' => $monitor->getId(),
+                'name' => $monitor->getName(),
+                'email' => $monitor->getEmail(),
+                'phone' => $monitor->getPhone(),
+                'photo' => $monitor->getPhoto()
+            ];
+        }
+
+        // Convert the date format example: 2024-01-20T23:36:33.297Z
+        $dateStart = $dateStart->format('Y-m-d\TH:i:s.v\Z');
+        $dateEnd = $dateEnd->format('Y-m-d\TH:i:s.v\Z');
+
+        // Convert the object into an associative array
+        $activityAsArray = [
+            'id' => $activity->getId(),
+            'activity_type' => $activityType,
+            'monitors' => $monitors,
+            'date_start' => $dateStart,
+            'date_end' => $dateEnd
+        ];
+
+        // Return a JSON response with the created activity and 200 status code
+        return new JsonResponse($activityAsArray, JsonResponse::HTTP_OK);
+    }
+
     // Validate the date format example: 2024-01-20T23:36:33.297Z
     public function isValidStartDate(\DateTime $date): bool
     {
